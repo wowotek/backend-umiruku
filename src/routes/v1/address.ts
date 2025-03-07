@@ -1,6 +1,4 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
 
 import DBSchema, { TKabupaten, TKecamatan, TKelurahan, TKodepos, TProvinsi } from '../../database/schema';
 import DBController from '../../database/database';

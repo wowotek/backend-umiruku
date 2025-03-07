@@ -72,6 +72,12 @@ export const kodeposRelations = relations(kodepos, ({ one }) => ({
 
 
 // ======================= FILES =======================
+export type TFile = {
+    id: number,
+    filename_path: string,
+    mimetype: string,
+    signature: string,
+};
 export const files = mysqlTable('files', {
     id: int().autoincrement().primaryKey(),
     filename_path: text().notNull(),
@@ -80,13 +86,36 @@ export const files = mysqlTable('files', {
 });
 // =====================================================
 
-
+export type TUser = {
+    id: number,
+    username: string,
+    password: string,
+};
+export type TUserProtected = {
+    id: number,
+    username: string,
+    password: string | null
+};
 export const users = mysqlTable('users', {
     id: int().autoincrement().primaryKey(),
     username: varchar({ length: 255 }).notNull().unique(),
     password: varchar({ length: 512 }).notNull().unique(),
 });
 
+export type TCustomer = {
+    id: number,
+    user_id: number,
+    fullname: string,
+    phone_number: string,
+    kelurahan_id: number,
+    kecamatan_id: number,
+    kabupaten_id: number,
+    provinsi_id: number,
+    kodepos_id: number,
+    full_address: string,
+    coord_lati: number,
+    coord_long: number,
+};
 export const customers = mysqlTable('customer', {
     id: int().autoincrement().primaryKey(),
     user_id: int().unique().references(() => users.id),
