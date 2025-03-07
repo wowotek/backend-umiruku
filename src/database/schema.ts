@@ -1,46 +1,69 @@
 import { relations } from "drizzle-orm";
 import { int, varchar, decimal, mysqlTable, datetime, text } from "drizzle-orm/mysql-core";
 
-
+export type TProvinsi = {
+    id: number,
+    name: string
+};
 export const provinsi = mysqlTable('provinsi', {
     id: int().autoincrement().primaryKey(),
-    name: varchar({ length: 255 }),
+    name: varchar({ length: 255 }).notNull(),
 });
 
+export type TKabupaten = {
+    id: number,
+    provinsi_id: number,
+    name: string
+};
 export const kabupaten = mysqlTable('kabupaten', {
     id: int().autoincrement().primaryKey(),
-    provinsi_id: int().references(() => provinsi.id),
-    name: varchar({ length: 255 }),
+    provinsi_id: int().notNull().references(() => provinsi.id),
+    name: varchar({ length: 255 }).notNull(),
 });
 
 export const kabupatenRelations = relations(kabupaten, ({ one }) => ({
     provinsi: one(provinsi, { fields: [kabupaten.provinsi_id], references: [provinsi.id] }),
 }));
 
+export type TKecamatan = {
+    id: number,
+    kabupaten_id: number,
+    name: string
+};
 export const kecamatan = mysqlTable('kecamatan', {
     id: int().autoincrement().primaryKey(),
-    kabupaten_id: int().references(() => kabupaten.id),
-    name: varchar({ length: 255 }),
+    kabupaten_id: int().notNull().references(() => kabupaten.id),
+    name: varchar({ length: 255 }).notNull(),
 });
 
 export const kecamatanRelations = relations(kecamatan, ({ one }) => ({
     kabupaten: one(kabupaten, { fields: [kecamatan.kabupaten_id], references: [kabupaten.id] }),
 }));
 
+export type TKelurahan = {
+    id: number,
+    kecamatan_id: number,
+    name: string
+};
 export const kelurahan = mysqlTable('kelurahan', {
     id: int().autoincrement().primaryKey(),
-    kecamatan_id: int().references(() => kecamatan.id),
-    name: varchar({ length: 255 }),
+    kecamatan_id: int().notNull().references(() => kecamatan.id),
+    name: varchar({ length: 255 }).notNull(),
 });
 
 export const kelurahanRelations = relations(kelurahan, ({ one }) => ({
     kecamatan: one(kecamatan, { fields: [kelurahan.kecamatan_id], references: [kecamatan.id] }),
 }));
 
+export type TKodepos = {
+    id: number,
+    kelurahan_id: number,
+    kodepos: string
+};
 export const kodepos = mysqlTable('kodepos', {
     id: int().autoincrement().primaryKey(),
-    kelurahan_id: int().references(() => kelurahan.id),
-    kodepos: varchar({ length: 5 }),
+    kelurahan_id: int().notNull().references(() => kelurahan.id),
+    kodepos: varchar({ length: 5 }).notNull(),
 });
 
 export const kodeposRelations = relations(kodepos, ({ one }) => ({
@@ -102,3 +125,19 @@ export const customerRelations = relations(customers, ({ one }) => ({
       kodepos: one(kodepos, { fields: [customers.kodepos_id], references: [kodepos.id] }),
 }));
 
+export default {
+    provinsi,
+    kabupaten,
+    kabupatenRelations,
+    kecamatan,
+    kecamatanRelations,
+    kelurahan,
+    kelurahanRelations,
+    kodepos,
+    kodeposRelations,
+    files,
+    users,
+    customers,
+    pembayaran,
+    customerRelations
+}

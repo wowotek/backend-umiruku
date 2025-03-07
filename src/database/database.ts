@@ -1,10 +1,7 @@
+import 'dotenv/config';
 import { drizzle } from "drizzle-orm/mysql2";
 
 
-export const controller = drizzle({ connection: {
-    // I DON'T CARE, JUST HARD CODE IT FOR NOW
-    uri: "",
-    database: "umiruku"
-}});
+export const controller = drizzle(process.env.DATABASE_URL!);
 
 export default controller;
