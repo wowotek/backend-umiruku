@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { and, eq, gte, like, lte } from 'drizzle-orm';
 
 import DBController from '../../database/database';
-import DBSchema from '../../database/schema';
+import * as Schema from '../../database/schemas';
 
 
 const route_Customer = new Hono();
@@ -26,14 +26,14 @@ route_Customer.post(
             kabupaten_id: z.number().min(1),
             provinsi_id: z.number().min(1),
             kodepos_id: z.number().min(1),
-            coord_lati: z.number().min(1),
-            coord_long: z.number().min(1),
+            coord_lati: z.number(),
+            coord_long: z.number(),
         }
     )),
     async (c) => {
         const validated = c.req.valid('json');
 
-        return DBController.insert(DBSchema.customers)
+        return DBController.insert(Schema.customers.customers)
             .values({
                 fullname: validated.fullname,
                 phone_number: validated.phone_number,
@@ -53,7 +53,7 @@ route_Customer.post(
                 return c.json({
                     status: 'ok',
                     result
-                });
+                }, 201);
             })
             .catch(async err => {
                 console.error("CREATE Customer", err);
@@ -72,11 +72,11 @@ route_Customer.get(
         const fullname = c.req.query('fullname') ?? "";
         const phone_number = c.req.query('phone_number') ?? "";
 
-        return DBController.select().from(DBSchema.customers)
+        return DBController.select().from(Schema.customers.customers)
             .where(
                 and(
-                    like(DBSchema.customers.fullname, fullname),
-                    like(DBSchema.customers.phone_number, phone_number)
+                    like(Schema.customers.customers.fullname, fullname),
+                    like(Schema.customers.customers.phone_number, phone_number)
                 )
             )
             .limit(MAX_RESULT_COUNT)
@@ -101,11 +101,11 @@ route_Customer.get(
     async (c) => {
         const request = c.req.valid('query');
 
-        return DBController.select().from(DBSchema.customers)
+        return DBController.select().from(Schema.customers.customers)
             .where(
                 and(
-                    gte(DBSchema.customers.id, request.id_start),
-                    lte(DBSchema.customers.id, request.id_end)
+                    gte(Schema.customers.customers.id, request.id_start),
+                    lte(Schema.customers.customers.id, request.id_end)
                 )
             )
             .limit(MAX_RESULT_COUNT)

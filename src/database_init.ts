@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import DBController from './database/database';
-import Schema from './database/schema';
+import * as Schema from './database/schemas';
 
 // populate addresses definition
 
@@ -28,10 +28,10 @@ tbl_address_csv
             
             // TODO: i don't like the repetition in this code, so maybe i will refactor this later
             const provinsi_id = await DBController.select()
-                .from(Schema.provinsi)
-                .where(eq(Schema.provinsi.name, provinsi))
+                .from(Schema.addresses.provinsi)
+                .where(eq(Schema.addresses.provinsi.name, provinsi))
                 .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.provinsi)
+                .catch(async r => await DBController.insert(Schema.addresses.provinsi)
                     .values({ name: provinsi })
                     .$returningId()
                     .then(r2 => {
@@ -48,10 +48,10 @@ tbl_address_csv
                 continue;
 
             const kabupaten_id = await DBController.select()
-                .from(Schema.kabupaten)
-                .where(eq(Schema.kabupaten.name, kabupaten))
+                .from(Schema.addresses.kabupaten)
+                .where(eq(Schema.addresses.kabupaten.name, kabupaten))
                 .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.kabupaten)
+                .catch(async r => await DBController.insert(Schema.addresses.kabupaten)
                     .values({ name: kabupaten, provinsi_id })
                     .$returningId()
                     .then(r2 => {
@@ -64,14 +64,14 @@ tbl_address_csv
                     })
             );
 
-            if (kabupaten_id === -1) 
+            if (kabupaten_id === -1)
                 continue;
             
             const kecamatan_id = await DBController.select()
-                .from(Schema.kecamatan)
-                .where(eq(Schema.kecamatan.name, kecamatan))
+                .from(Schema.addresses.kecamatan)
+                .where(eq(Schema.addresses.kecamatan.name, kecamatan))
                 .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.kecamatan)
+                .catch(async r => await DBController.insert(Schema.addresses.kecamatan)
                     .values({ name: kecamatan, kabupaten_id })
                     .$returningId()
                     .then(r2 => {
@@ -88,10 +88,10 @@ tbl_address_csv
                 continue;
 
             const kelurahan_id = await DBController.select()
-                .from(Schema.kelurahan)
-                .where(eq(Schema.kelurahan.name, kelurahan))
+                .from(Schema.addresses.kelurahan)
+                .where(eq(Schema.addresses.kelurahan.name, kelurahan))
                 .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.kelurahan)
+                .catch(async r => await DBController.insert(Schema.addresses.kelurahan)
                     .values({ name: kelurahan, kecamatan_id })
                     .$returningId()
                     .then(r2 => {
@@ -108,10 +108,10 @@ tbl_address_csv
                 continue;
 
             const kodepos_id = await DBController.select()
-                .from(Schema.kodepos)
-                .where(eq(Schema.kodepos.kodepos, kodepos))
+                .from(Schema.addresses.kodepos)
+                .where(eq(Schema.addresses.kodepos.kodepos, kodepos))
                 .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.kodepos)
+                .catch(async r => await DBController.insert(Schema.addresses.kodepos)
                     .values({ kodepos, kelurahan_id })
                     .$returningId()
                     .then(r2 => {
@@ -136,4 +136,4 @@ tbl_address_csv
         }
 
         Bun.stdout.write("\n");
-    })
+    });

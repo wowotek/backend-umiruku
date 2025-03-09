@@ -34,6 +34,8 @@ class Cacher<T> {
     }
 };
 
+export type MakeOptional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+
 
 export {
     Cacher

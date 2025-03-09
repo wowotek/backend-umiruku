@@ -4,8 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { eq } from 'drizzle-orm';
 
 import DBController from '../../database/database';
-import DBSchema from '../../database/schema';
-
+import * as Schema from '../../database/schemas';
 
 
 const route_Users = new Hono();
@@ -18,9 +17,9 @@ route_Users.get(
     async (c) => {
         const username = c.req.query('username') ?? "";
 
-        return DBController.select().from(DBSchema.users)
+        return DBController.select().from(Schema.users.users)
             .where(
-                eq(DBSchema.users.username, username)
+                eq(Schema.users.users.username, username)
             )
             .limit(MAX_RESULT_COUNT)
             .then(async results => {
@@ -42,9 +41,9 @@ route_Users.get(
     async (c) => {
         const id = parseInt(c.req.query('id') ?? "-1");
 
-        return DBController.select().from(DBSchema.users)
+        return DBController.select().from(Schema.users.users)
             .where(
-                eq(DBSchema.users.id, id)
+                eq(Schema.users.users.id, id)
             )
             .limit(MAX_RESULT_COUNT)
             .then(async results => {

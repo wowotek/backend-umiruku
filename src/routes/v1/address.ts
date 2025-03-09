@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 
-import DBSchema, { TKabupaten, TKecamatan, TKelurahan, TKodepos, TProvinsi } from '../../database/schema';
+import * as Schema from '../../database/schemas';
 import DBController from '../../database/database';
 import { gte, lte, and, like, eq } from 'drizzle-orm';
 
@@ -18,9 +18,9 @@ route_Address.get(
         const query_substr = c.req.query('substr') ?? "";
 
         console.log("PROVINSI", "Using Database");
-        return DBController.select().from(DBSchema.provinsi)
+        return DBController.select().from(Schema.addresses.provinsi)
             .where(
-                like(DBSchema.provinsi.name, `%${query_substr}%`)
+                like(Schema.addresses.provinsi.name, `%${query_substr}%`)
             )
             .limit(MAX_RESULT_COUNT)
             .then(async results => {
@@ -40,9 +40,9 @@ route_Address.get(
         const query_substr = c.req.query('substr') ?? "";
     
         if (provinsi_id === -1) {
-            return DBController.select().from(DBSchema.kabupaten)
+            return DBController.select().from(Schema.addresses.kabupaten)
                 .where(
-                    like(DBSchema.kabupaten.name, `%${query_substr}%`)
+                    like(Schema.addresses.kabupaten.name, `%${query_substr}%`)
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -52,12 +52,12 @@ route_Address.get(
                     });
                 });
         } else {
-            return DBController.select().from(DBSchema.kabupaten)
+            return DBController.select().from(Schema.addresses.kabupaten)
                 .where(
                     query_substr.length <= 0 ? 
-                        eq(DBSchema.kabupaten.provinsi_id, provinsi_id)
+                        eq(Schema.addresses.kabupaten.provinsi_id, provinsi_id)
                         : 
-                        and(like(DBSchema.kabupaten.name, `%${query_substr}%`), eq(DBSchema.kabupaten.provinsi_id, provinsi_id))
+                        and(like(Schema.addresses.kabupaten.name, `%${query_substr}%`), eq(Schema.addresses.kabupaten.provinsi_id, provinsi_id))
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -78,9 +78,9 @@ route_Address.get(
         const query_substr = c.req.query('substr') ?? "";
     
         if (kabupaten_id === -1) {
-            return DBController.select().from(DBSchema.kecamatan)
+            return DBController.select().from(Schema.addresses.kecamatan)
                 .where(
-                    like(DBSchema.kecamatan.name, `%${query_substr}%`)
+                    like(Schema.addresses.kecamatan.name, `%${query_substr}%`)
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -90,12 +90,12 @@ route_Address.get(
                     });
                 });
         } else {
-            return DBController.select().from(DBSchema.kecamatan)
+            return DBController.select().from(Schema.addresses.kecamatan)
                 .where(
                     query_substr.length <= 0 ? 
-                        eq(DBSchema.kecamatan.kabupaten_id, kabupaten_id)
+                        eq(Schema.addresses.kecamatan.kabupaten_id, kabupaten_id)
                         : 
-                        and(like(DBSchema.kecamatan.name, `%${query_substr}%`), eq(DBSchema.kecamatan.kabupaten_id, kabupaten_id))
+                        and(like(Schema.addresses.kecamatan.name, `%${query_substr}%`), eq(Schema.addresses.kecamatan.kabupaten_id, kabupaten_id))
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -116,9 +116,9 @@ route_Address.get(
         const query_substr = c.req.query('substr') ?? "";
     
         if (kecamatan_id === -1) {
-            return DBController.select().from(DBSchema.kelurahan)
+            return DBController.select().from(Schema.addresses.kelurahan)
                 .where(
-                    like(DBSchema.kelurahan.name, `%${query_substr}%`)
+                    like(Schema.addresses.kelurahan.name, `%${query_substr}%`)
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -128,12 +128,12 @@ route_Address.get(
                     });
                 });
         } else {
-            return DBController.select().from(DBSchema.kelurahan)
+            return DBController.select().from(Schema.addresses.kelurahan)
                 .where(
                     query_substr.length <= 0 ? 
-                        eq(DBSchema.kelurahan.kecamatan_id, kecamatan_id)
+                        eq(Schema.addresses.kelurahan.kecamatan_id, kecamatan_id)
                         : 
-                        and(like(DBSchema.kelurahan.name, `%${query_substr}%`), eq(DBSchema.kelurahan.kecamatan_id, kecamatan_id))
+                        and(like(Schema.addresses.kelurahan.name, `%${query_substr}%`), eq(Schema.addresses.kelurahan.kecamatan_id, kecamatan_id))
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -154,9 +154,9 @@ route_Address.get(
         const query_substr = c.req.query('substr') ?? "";
     
         if (kelurahan_id === -1) {
-            return DBController.select().from(DBSchema.kodepos)
+            return DBController.select().from(Schema.addresses.kodepos)
                 .where(
-                    like(DBSchema.kodepos.kodepos, `%${query_substr}%`)
+                    like(Schema.addresses.kodepos.kodepos, `%${query_substr}%`)
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
@@ -166,12 +166,12 @@ route_Address.get(
                     });
                 });
         } else {
-            return DBController.select().from(DBSchema.kodepos)
+            return DBController.select().from(Schema.addresses.kodepos)
                 .where(
                     query_substr.length <= 0 ? 
-                        eq(DBSchema.kodepos.kelurahan_id, kelurahan_id)
+                        eq(Schema.addresses.kodepos.kelurahan_id, kelurahan_id)
                         : 
-                        and(like(DBSchema.kodepos.kodepos, `%${query_substr}%`), eq(DBSchema.kodepos.kelurahan_id, kelurahan_id))
+                        and(like(Schema.addresses.kodepos.kodepos, `%${query_substr}%`), eq(Schema.addresses.kodepos.kelurahan_id, kelurahan_id))
                 )
                 .limit(MAX_RESULT_COUNT)
                 .then(async results => {
