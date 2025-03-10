@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import DBController from './database/database';
+import DBController from './database';
 import * as Schema from './database/schemas';
 
 // populate addresses definition

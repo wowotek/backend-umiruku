@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 
 import * as Schema from '../../database/schemas';
-import DBController from '../../database/database';
+import DBController from '../../database';
 import { gte, lte, and, like, eq } from 'drizzle-orm';
 
 import { Cacher } from '../../utilities';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 
 
 const route_Address = new Hono();
@@ -184,5 +186,108 @@ route_Address.get(
     }
 );
 
+//==================================================
+// === Management Enabled Kecamatan
+//==================================================
+
+// GET, get all Enabled Kecamatan
+route_Address.get(
+    '/enabled-kecamatan',
+    async (c) => {
+        const max = parseInt(c.req.query('max') ?? "-1");
+        const results: Array<Schema.addresses.TEnabledKecamatan> = []
+        
+        if (max !== -1) {
+            await DBController.select()
+                .from(Schema.addresses.enabledKecamatan)
+                .then(async results => results.forEach(async (result) => results.push(result)));
+        } else {
+            await DBController.select()
+                .from(Schema.addresses.enabledKecamatan)
+                .limit(max)
+                .then(async results => results.forEach(async (result) => results.push(result)));
+        }
+
+        return c.json({
+            status: 'ok',
+            results
+        });
+    }
+);
+
+// POST, Add Enabled Kecamatan
+route_Address.post(
+    '/enabled-kecamatan',
+    zValidator('json', z.object(
+        {
+            kecamatan_id: z.number().int().min(1)
+        }
+    )),
+    async (c) => {
+        const kecamatan_id = c.req.valid('json').kecamatan_id;
+        
+        // check if kecamatan_id is already exists
+        const isExists = await DBController.select()
+            .from(Schema.addresses.enabledKecamatan)
+            .where(
+                eq(Schema.addresses.enabledKecamatan.kecamatan_id, kecamatan_id)
+            )
+            .then(async results => results.length > 0);
+        
+        if (isExists) return c.json({
+            status: 'error',
+            error: 'Kecamatan ID already exists'
+        }, 400);
+
+        // insert kecamatan_id
+        return DBController.insert(Schema.addresses.enabledKecamatan)
+            .values({kecamatan_id})
+            .$returningId()
+            .then(async id => {
+                return c.json({
+                    status: 'ok',
+                    result: id
+                });
+            });
+    }
+);
+
+// DELETE, Delete Enabled Kecamatan
+route_Address.delete(
+    '/enabled-kecamatan',
+    zValidator('json', z.object(
+        {
+            kecamatan_id: z.number().int().min(1)
+        }
+    )),
+    async (c) => {
+        const kecamatan_id = c.req.valid('json').kecamatan_id;
+        
+        // check if kecamatan_id is already exists
+        const isExists = await DBController.select()
+            .from(Schema.addresses.enabledKecamatan)
+            .where(
+                eq(Schema.addresses.enabledKecamatan.kecamatan_id, kecamatan_id)
+            )
+            .then(async results => results.length > 0);
+        
+        if (!isExists) return c.json({
+            status: 'error',
+            error: 'Kecamatan ID not exists'
+        }, 400);
+
+        // delete kecamatan_id
+        return DBController.delete(Schema.addresses.enabledKecamatan)
+            .where(
+                eq(Schema.addresses.enabledKecamatan.kecamatan_id, kecamatan_id)
+            )
+            .then(async result => {
+                return c.json({
+                    status: 'ok',
+                    result
+                }, 200);
+            });
+    }
+);
 
 export default route_Address;
