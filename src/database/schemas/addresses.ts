@@ -1,6 +1,7 @@
 import { InferSelectModel, relations } from "drizzle-orm";
 import { int, varchar, decimal, mysqlTable, datetime, text, boolean } from "drizzle-orm/mysql-core";
 
+
 // === PROVINSI
 export type TProvinsi = InferSelectModel<typeof provinsi>;
 export const provinsi = mysqlTable('provinsi', {
@@ -66,3 +67,10 @@ export const kodepos = mysqlTable('kodepos', {
 export const kodeposRelations = relations(kodepos, ({ one }) => ({
     kelurahan: one(kelurahan, { fields: [kodepos.kelurahan_id], references: [kelurahan.id] }),
 }));
+
+// === Enabled Kecamatan
+export type TEnabledKecamatan = InferSelectModel<typeof enabledKecamatan>;
+export const enabledKecamatan = mysqlTable('enabled_kecamatan', {
+    id: int().autoincrement().primaryKey(),
+    kecamatan_id: int().notNull().references(() => kecamatan.id),
+});

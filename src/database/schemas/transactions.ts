@@ -1,9 +1,10 @@
-import { relations } from "drizzle-orm";
+import { InferSelectModel, relations } from "drizzle-orm";
 import { int, varchar, decimal, mysqlTable, datetime, text, boolean } from "drizzle-orm/mysql-core";
 import { customers } from "./customers";
 import { deliveryPlan, product, productPrice } from "./products";
 import { files } from "./files";
 
+export type TInvoice = InferSelectModel<typeof invoice>;
 export const invoice = mysqlTable('invoice', {
     id: int().autoincrement().primaryKey(),
     customer_id: int().references(() => customers.id),
@@ -18,6 +19,11 @@ export const invoice = mysqlTable('invoice', {
     bukti_transfer_file_id: int().references(() => files.id),
 });
 
+// TODO: make both relation for invoice -> customer and customer -> invoice
+// TODO: make both relation for invoice -> productPrice and productPrice -> invoice
+// TODO: make both relation for invoice -> deliveryPlan and deliveryPlan -> invoice
+
+export type TCustomerSubscription = InferSelectModel<typeof customer_subscription>;
 export const customer_subscription = mysqlTable('customer_subscription', {
     id: int().autoincrement().primaryKey(),
     customer_id: int().references(() => customers.id),
