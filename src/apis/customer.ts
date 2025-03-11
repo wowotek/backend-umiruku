@@ -1,34 +1,72 @@
 import { eq } from 'drizzle-orm';
 import DBController from '../database';
 import * as Schema from '../database/schemas';
+import { TReturn } from './__types';
+import { TCustomer } from '../database/schemas/customers';
 
 
-export const getCustomerById = async (customer_id: number) => await DBController.select()
-    .from(Schema.customers.customers)
-    .where(
-        eq(Schema.customers.customers.id, customer_id)
-    )
-    .limit(1)
-    .then(async results => results.length > 0 ? results[0] : null)
-    .catch(async err => {
-        console.error("GET Customer", err);
-        throw err;
-    });
+export const getCustomerById = async (
+        customer_id: number
+    ): Promise<TReturn<TCustomer>> => await DBController.select()
+        .from(Schema.customers.customers)
+        .where(
+            eq(Schema.customers.customers.id, customer_id)
+        )
+        .limit(1)
+        .then(async results => 
+            results.length > 0 ? {
+                status: 'ok',
+                result: results[0] /* this is a customer */
+            } : {
+                status: 'error',
+                result: 'customer_not_found'
+            }
+        )
+        .catch(async (err: Error) => {
+            console.error("GET Customer", err);
+            return {
+                status: 'error',
+                result: err
+            }
+        });
 
-export const getCustomerByPhone = async (phone_number: string) => await DBController.select()
-    .from(Schema.customers.customers)
-    .where(
-        eq(Schema.customers.customers.phone_number, phone_number)
-    )
-    .limit(1)
-    .then(async results => results.length > 0 ? results[0] : null)
+export const getCustomerByPhone = async (
+        phone_number: string
+    ): Promise<TReturn<TCustomer>> => await DBController.select()
+        .from(Schema.customers.customers)
+        .where(
+            eq(Schema.customers.customers.phone_number, phone_number)
+        )
+        .limit(1)
+        .then(async results => results.length > 0 ? {
+            status: 'ok',
+            result: results[0] 
+        } : {
+            status: 'error',
+            result: null
+        })
+        .catch(async err => {
+            console.error("GET Customer by Phone", err);
+            return {
+                status: 'error',
+                result: err
+            }
+        });
 
-export const customerPhoneNumberIsExist = async (phone_number: string) => await getCustomerByPhone(phone_number)
-    .then(async result => result !== null)
-    .catch(async err => {
-        console.error("CHECK Customer", err);
-        throw err;
-    });
+export const customerPhoneNumberIsExist = async (
+        phone_number: string
+    ): Promise<TReturn<Boolean>> => await getCustomerByPhone(phone_number)
+        .then(async result => ({
+            status: 'ok',
+            result: result !== null
+        }))
+        .catch(async err => {
+            console.error("CHECK Customer", err);
+            return {
+                status: 'error',
+                result: err
+            }
+        });
 
 export const createNewCustomer = async (data: {
     fullname: string,
@@ -44,7 +82,7 @@ export const createNewCustomer = async (data: {
 
     coord_lati: number,
     coord_long: number,
-}) => await customerPhoneNumberIsExist(data.phone_number)
+}): Promise<TReturn<TCustomer>> => await customerPhoneNumberIsExist(data.phone_number)
         .then(async phoneNumberExist => {
             if (phoneNumberExist) return {
                 status: 'error',
@@ -78,12 +116,18 @@ export const createNewCustomer = async (data: {
                     }))
                     .catch(async err => {
                         console.error("GET Customer", err);
-                        throw err;
+                        return {
+                            status: 'error',
+                            result: err
+                        }
                     })
                 )   
                 .catch(async err => {
                     console.error("CREATE Customer", err);
-                    throw err;
+                    return {
+                        status: 'error',
+                        result: err
+                    }
                 });
         })
 
