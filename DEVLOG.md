@@ -5,3 +5,4 @@
 - [ ] Implement routes based on front-end usages and flow
 - [ ] Make pipeline-based internal API design for routes
 - [ ] Check the inference types ideally in test scripts
+- [ ] make internal API code structure to function instead of anonymous function
