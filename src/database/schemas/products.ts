@@ -10,6 +10,7 @@ export const product = mysqlTable('product', {
 });
 
 export type TProductPrice = InferSelectModel<typeof productPrice>;
+export type TFullProductPrice = { product: TProduct | null, product_price: TProductPrice | null };
 export const productPrice = mysqlTable('product_price', {
     id: int().autoincrement().primaryKey(),
     product_id: int().references(() => product.id),
@@ -24,6 +25,5 @@ export const productPriceRelations = relations(productPrice, ({ one }) => ({
 export type TDeliveryPlan = InferSelectModel<typeof deliveryPlan>;
 export const deliveryPlan = mysqlTable('delivery_plan', {
     id: int().autoincrement().primaryKey(),
-    name: varchar({ length: 255 }).notNull(),
-    is_enabled: boolean().notNull()
+    name: varchar({ length: 255 }).notNull()
 });
