@@ -1,11 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, gte, lte, min } from 'drizzle-orm';
 import DBController from '../database';
-import * as Schema from '../database/schemas';
-import { TReturn } from './__types';
+import Schema from '../database/schemas';
+import { TReturn } from './_types';
 import { TCustomer } from '../database/schemas/customers';
 
 
-export const getCustomerById = async (
+export const getOneById = async (
         customer_id: number
     ): Promise<TReturn<TCustomer>> => await DBController.select()
         .from(Schema.customers.customers)
@@ -30,7 +30,7 @@ export const getCustomerById = async (
             }
         });
 
-export const getCustomerByPhone = async (
+export const getOneByPhone = async (
         phone_number: string
     ): Promise<TReturn<TCustomer>> => await DBController.select()
         .from(Schema.customers.customers)
@@ -53,24 +53,59 @@ export const getCustomerByPhone = async (
             }
         });
 
-export const customerPhoneNumberIsExist = async (
-        phone_number: string
-    ): Promise<TReturn<Boolean>> => await getCustomerByPhone(phone_number)
-        .then(async result => ({
+export const getOneByEmail = async (
+        email: string
+    ): Promise<TReturn<TCustomer>> => await DBController.select()
+        .from(Schema.customers.customers)
+        .where(
+            eq(Schema.customers.customers.email, email)
+        )
+        .limit(1)
+        .then(async results => results.length > 0 ? {
             status: 'ok',
-            result: result !== null
-        }))
+            result: results[0] 
+        } : {
+            status: 'error',
+            result: null
+        })
         .catch(async err => {
-            console.error("CHECK Customer", err);
+            console.error("GET Customer by Email", err);
             return {
                 status: 'error',
                 result: err
             }
         });
 
-export const createNewCustomer = async (data: {
+export const getManyByMinMaxId = async (
+        min: number,
+        max: number
+    ): Promise<TReturn<TCustomer[]>> => await DBController.select()
+        .from(Schema.customers.customers)
+        .where(
+            and(
+                gte(Schema.customers.customers.id, min),
+                lte(Schema.customers.customers.id, max)
+            )
+        )
+        .then(async results => ({
+            status: 'ok',
+            result: results
+        }));
+
+export const getManyCount = async (
+        count: number
+    ): Promise<TReturn<TCustomer[]>> => await DBController.select()
+        .from(Schema.customers.customers)
+        .limit(count)
+        .then(async results => ({
+            status: 'ok',
+            result: results
+        }));
+
+export const createOne = async (data: {
     fullname: string,
     phone_number: string,
+    email?: string,
     
     kelurahan_id: number,
     kecamatan_id: number,
@@ -82,18 +117,29 @@ export const createNewCustomer = async (data: {
 
     coord_lati: number,
     coord_long: number,
-}): Promise<TReturn<TCustomer>> => await customerPhoneNumberIsExist(data.phone_number)
-        .then(async phoneNumberExist => {
-            if (phoneNumberExist) return {
+}): Promise<TReturn<TCustomer>> => await getOneByPhone(data.phone_number)
+        .then(async customer => {
+            if (customer.result !== null) return {
                 status: 'error',
-                result: 'phone_number_exist' // TODO: make all possible errors in an integer map
+                result: 'phone_number_exist'
             };
+
+            // if using email, check if email is exist
+            if (data.email) {
+                const emailExist = await getOneByEmail(data.email);
+                if (emailExist.result !== null) return {
+                    status: 'error',
+                    result: 'email_exist'
+                };
+            }
+
             
             // TODO: Normalize this mofos!!!! NOW !
             return await DBController.insert(Schema.customers.customers)
                 .values({
                     fullname: data.fullname,
                     phone_number: data.phone_number,
+                    email: data.email,
                     
                     kelurahan_id: data.kelurahan_id,
                     kecamatan_id: data.kecamatan_id,
@@ -132,8 +178,10 @@ export const createNewCustomer = async (data: {
         })
 
 export default {
-    getCustomerById,
-    getCustomerByPhone,
-    customerPhoneNumberIsExist,
-    createNewCustomer,
+    getOneById,
+    getOneByPhone,
+    getOneByEmail,
+    getManyByMinMaxId,
+    getManyCount,
+    createOne,
 };
