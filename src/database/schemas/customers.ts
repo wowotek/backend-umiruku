@@ -6,7 +6,7 @@ import { invoice } from "./transactions";
 
 
 export type TCustomer = InferSelectModel<typeof customers>;
-export const customers = mysqlTable('customer', {
+export const tblDefCustomer = {
     id: int().autoincrement().primaryKey(),
     user_id: int().unique().references(() => users.id),
     email: varchar({ length: 255 }).unique(),
@@ -24,7 +24,8 @@ export const customers = mysqlTable('customer', {
 
     coord_lati: decimal({ precision: 11, scale: 8 }).notNull(),
     coord_long: decimal({ precision: 11, scale: 8 }).notNull(),
-});
+};
+export const customers = mysqlTable('customer', tblDefCustomer);
 
 export const customerRelations = relations(customers, ({ one, many }) => ({
     user: one(users, { fields: [customers.user_id], references: [users.id] }),

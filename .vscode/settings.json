@@ -7,6 +7,10 @@
         "kelurahan",
         "kodepos",
         "pembayaran",
-        "provinsi"
-    ]
+        "provinsi",
+        "retval"
+    ],
+    "files.associations": {
+        "ostream": "cpp"
+    }
 }
