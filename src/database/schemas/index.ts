@@ -6,7 +6,7 @@ import * as transactions from './transactions';
 import * as users from './users';
 
 
-export {
+export const Schema = {
     addresses,
     customers,
     files,
@@ -15,4 +15,4 @@ export {
     users
 };
 
-
+export default Schema
