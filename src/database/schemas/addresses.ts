@@ -45,6 +45,7 @@ export const tblDefEnabledKecamatan = {
     kecamatan_id: int().unique().notNull().references(() => kecamatan.id),
 };
 
+
 // === Table Instances
 export const provinsi = mysqlTable('provinsi', tblDefProvinsi);
 export const kabupaten = mysqlTable('kabupaten', tblDefKabupaten);
@@ -52,6 +53,7 @@ export const kecamatan = mysqlTable('kecamatan', tblDefKecamatan);
 export const kelurahan = mysqlTable('kelurahan', tblDefKelurahan);
 export const kodepos = mysqlTable('kodepos', tblDefKodepos);
 export const enabledKecamatan = mysqlTable('enabled_kecamatan', tblDefEnabledKecamatan);
+
 
 // === RELATIONS
 export const provinsiToKabupaten = relations(provinsi, ({ many }) => ({
