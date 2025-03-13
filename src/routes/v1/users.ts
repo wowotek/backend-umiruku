@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { eq } from 'drizzle-orm';
 
 import DBController from '../../database';
-import * as Schema from '../../database/schemas';
+import Schema from '../../database/schemas';
 
 
 const route_Users = new Hono();

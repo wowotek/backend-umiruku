@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { and, eq, gte, like, lte } from 'drizzle-orm';
 
 import DBController from '../../database';
-import * as Schema from '../../database/schemas';
-import { createNewCustomer } from '../../apis/customer';
+import Schema from '../../database/schemas';
+import API from '../../apis';
 import { createNewInvoice } from '../../apis/transaction';
 import { TCustomer } from '../../database/schemas/customers';
 import { TInvoice } from '../../database/schemas/transactions';
+import { TKabupaten, TKecamatan, TKelurahan, TKodepos, TProvinsi } from '../../database/schemas/addresses';
 
 
 const route_Customer = new Hono();
@@ -21,9 +22,6 @@ route_Customer.post(
     '/',
     zValidator('json', z.object(
         {
-            product_id: z.number().int().min(1),
-            delivery_plan_id: z.number().int().min(1),
-
             fullname: z.string().nonempty(),
             phone_number: z.string().nonempty(),
             address: z.string().nonempty(),
@@ -39,14 +37,42 @@ route_Customer.post(
     )),
     async (c) => {
         const validated = c.req.valid('json');
-        const customer_data = await createNewCustomer({
+
+        const address_details = await API.Address.getAddressDetails(
+            validated.provinsi_id,
+            validated.kabupaten_id,
+            validated.kecamatan_id,
+            validated.kelurahan_id,
+            validated.kodepos_id
+        );
+
+        if (address_details.status === "error") return c.json({
+            status: 'error',
+            result: address_details.result
+        });
+
+        const addresses = address_details.result as {
+            provinsi: TProvinsi,
+            kabupaten: TKabupaten,
+            kecamatan: TKecamatan,
+            kelurahan: TKelurahan,
+            kodepos: TKodepos,
+        };
+
+        const optional_request = await c.req.json();
+        const email = optional_request?.email ?? "";
+
+        const customer_data = await API.Customer.createOne({
+            email: email ?? "",
             fullname: validated.fullname,
             phone_number: validated.phone_number,
-            kelurahan_id: validated.kelurahan_id,
-            kecamatan_id: validated.kecamatan_id,
-            kabupaten_id: validated.kabupaten_id,
-            provinsi_id: validated.provinsi_id,
-            kodepos_id: validated.kodepos_id,
+
+            provinsi_id: addresses.provinsi.id,
+            kabupaten_id: addresses.kabupaten.id,
+            kecamatan_id: addresses.kecamatan.id,
+            kelurahan_id: addresses.kelurahan.id,
+            kodepos_id: addresses.kodepos.id,
+
             address: validated.address,
             coord_lati: validated.coord_lati,
             coord_long: validated.coord_long,
@@ -58,25 +84,9 @@ route_Customer.post(
         });
 
         const customer = customer_data.result as TCustomer;
-        const invoice_data = await createNewInvoice(customer.id, validated.product_id, validated.delivery_plan_id);
-
-        if (!invoice_data) return c.json({
-            status: 'error',
-            result: "server_error"
-        });
-
-        if (invoice_data.status === "error") return c.json({
-            status: 'error',
-            result: invoice_data.result
-        });
-
-        const invoice = invoice_data as TInvoice;
         return c.json({
             status: 'ok',
-            result: {
-                customer,
-                invoice
-            }
+            result: customer,
         });
     }
 );
@@ -114,24 +124,16 @@ route_Customer.get(
             id_end: z.number().int().min(1),
         }
     )),
-    async (c) => {
-        const request = c.req.valid('query');
-
-        return DBController.select().from(Schema.customers.customers)
-            .where(
-                and(
-                    gte(Schema.customers.customers.id, request.id_start),
-                    lte(Schema.customers.customers.id, request.id_end)
-                )
-            )
-            .limit(MAX_RESULT_COUNT)
-            .then(async results => {
-                return c.json({
-                    status: 'ok',
-                    results
-                });
+    async (c) => await API.Customer
+        .getManyByMinMaxId(
+            c.req.valid('query').id_start,
+            c.req.valid('query').id_end
+        ).then(async results => {
+            return c.json({
+                status: 'ok',
+                results: results.result
             });
-    }
+    })
 );
 
 export default route_Customer;
