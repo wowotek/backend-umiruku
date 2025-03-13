@@ -39,6 +39,7 @@ export const kecamatan = mysqlTable('kecamatan', {
 export const kecamatanRelations = relations(kecamatan, ({ one, many }) => ({
     to_kabupaten: one(kabupaten, { fields: [kecamatan.kabupaten_id], references: [kabupaten.id] }),
     to_kelurahan: many(kelurahan),
+    to_enabled_kecamatan: one(enabledKecamatan, { fields: [kecamatan.id], references: [enabledKecamatan.kecamatan_id] }),
 }));
 
 
@@ -72,5 +73,9 @@ export const kodeposRelations = relations(kodepos, ({ one }) => ({
 export type TEnabledKecamatan = InferSelectModel<typeof enabledKecamatan>;
 export const enabledKecamatan = mysqlTable('enabled_kecamatan', {
     id: int().autoincrement().primaryKey(),
-    kecamatan_id: int().notNull().references(() => kecamatan.id),
+    kecamatan_id: int().unique().notNull().references(() => kecamatan.id),
 });
+
+export const enabledKecamatanRelations = relations(enabledKecamatan, ({ one }) => ({
+    kecamatan: one(kecamatan, { fields: [enabledKecamatan.kecamatan_id], references: [kecamatan.id] }),
+}));
