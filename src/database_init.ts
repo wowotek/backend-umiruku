@@ -1,139 +1,117 @@
 import { eq } from 'drizzle-orm';
 import DBController from './database';
-import * as Schema from './database/schemas';
+import Schema from './database/schemas';
 
-// populate addresses definition
+import { provinsi, kabupaten, kecamatan, kelurahan, kodepos, TProvinsi, TKabupaten, TKecamatan, TKelurahan, TKodepos } from './database/schemas/addresses';
 
-// read csv file
-const tbl_address_csv = Bun.file("./tbl_kodepos_bps.csv")
-tbl_address_csv
-    .text()
-    .then(async f => {
-        const data = f.split("\n").map(v => v.split(",").map(v2 => v2.replace(/[\'\"]+/g, '')));
-        const data_length = data.length;
-        let current = 0;
+async function findOrCreate<T>(table: any, column: any, value: string, additionalData: Record<string, any> = {}): Promise<T> {
+    const existing = await DBController.select().from(table).where(eq(column, value)).limit(1);
+    if (existing.length > 0) return existing[0];
 
-        const failed_kelurahan = [];
-        const failed_kecamatan = [];
-        const failed_kabupaten = [];
-        const failed_provinsi = [];
-        const failed_kodepos = [];
+    const [inserted] = await DBController.insert(table).values({ [column]: value, ...additionalData });
 
-        for await (const row of data) {
-            const provinsi = row[3];
-            const kabupaten = row[2];
-            const kecamatan = row[1];
-            const kelurahan = row[0];
-            const kodepos = row[4];
-            
-            // TODO: i don't like the repetition in this code, so maybe i will refactor this later
-            const provinsi_id = await DBController.select()
-                .from(Schema.addresses.provinsi)
-                .where(eq(Schema.addresses.provinsi.name, provinsi))
-                .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.addresses.provinsi)
-                    .values({ name: provinsi })
-                    .$returningId()
-                    .then(r2 => {
-                        return r2[0].id;
-                    })
-                    .catch(r2 => {
-                        throw r2;
-                        failed_provinsi.push(provinsi);
-                        return -1;
-                    })
-            );
+    return (await DBController.select().from(table).where(eq(column, value)).limit(1))[0];
+}
 
-            if (provinsi_id === -1) 
-                continue;
+export async function populateDatabase() {
+    const tbl_address_csv = Bun.file("./tbl_kodepos_bps.csv");
 
-            const kabupaten_id = await DBController.select()
-                .from(Schema.addresses.kabupaten)
-                .where(eq(Schema.addresses.kabupaten.name, kabupaten))
-                .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.addresses.kabupaten)
-                    .values({ name: kabupaten, provinsi_id })
-                    .$returningId()
-                    .then(r2 => {
-                        return r2[0].id;
-                    })
-                    .catch(r2 => {
-                        throw r2;
-                        failed_kabupaten.push(kabupaten);
-                        return -1;
-                    })
-            );
+    console.log("Populating Database...");
+    const fileContent = await tbl_address_csv.text();
+    const data = fileContent.split("\n").map(line => line.trim()).filter(line => line.length > 0)
+        .map(v => v.split(",").map(v2 => v2.replace(/^['"]|['"]$/g, '').trim()));
 
-            if (kabupaten_id === -1)
-                continue;
-            
-            const kecamatan_id = await DBController.select()
-                .from(Schema.addresses.kecamatan)
-                .where(eq(Schema.addresses.kecamatan.name, kecamatan))
-                .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.addresses.kecamatan)
-                    .values({ name: kecamatan, kabupaten_id })
-                    .$returningId()
-                    .then(r2 => {
-                        return r2[0].id;
-                    })
-                    .catch(r2 => {
-                        throw r2;
-                        failed_kecamatan.push(kecamatan);
-                        return -1;
-                    })
-            );
+    data.shift(); // Remove header
+    const length = data.length;
 
-            if (kecamatan_id === -1) 
-                continue;
+    let current = 0;
+    let processed = 0;
+    console.log("Parsing CSV data...");
+    let now = new Date().getTime();
+    console.log("");
 
-            const kelurahan_id = await DBController.select()
-                .from(Schema.addresses.kelurahan)
-                .where(eq(Schema.addresses.kelurahan.name, kelurahan))
-                .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.addresses.kelurahan)
-                    .values({ name: kelurahan, kecamatan_id })
-                    .$returningId()
-                    .then(r2 => {
-                        return r2[0].id;
-                    })
-                    .catch(r2 => {
-                        throw r2;
-                        failed_kelurahan.push(kelurahan);
-                        return -1;
-                    })
-            );
+    for await (const row of data) {
+        const dt = new Date().getTime() - now;
+        current++;
+        
+        if (row.length < 5) continue; // Ensure the row has enough columns
+        
+        const kelurahanName = row[0];
+        const kecamatanName = row[1];
+        const kabupatenName = row[2];
+        const provinsiName = row[3];
+        const kodeposValue = row[4];
+        
+        now = new Date().getTime();
+        
+        if (!kelurahanName || !kecamatanName || !kabupatenName || !provinsiName || !kodeposValue) continue;
+        
+        console.log(`Processing: ${String(current).padStart(String(length).length+1, '0')} / ${length} ${String((current/length*100).toFixed(2))}% ${provinsiName} ${kabupatenName} ${kecamatanName} ${kelurahanName} ${kodeposValue}                  \r`);
+        const wait = await 
+            findOrCreate<TProvinsi>(provinsi, provinsi.name, provinsiName, { name: provinsiName })
+            .then(async (provinsiData) => await 
+                findOrCreate<TKabupaten>(kabupaten, kabupaten.name, kabupatenName, { name: kabupatenName, provinsi_id: provinsiData.id }))
+                .then(async (kabupatenData) => await
+                    findOrCreate<TKecamatan>(kecamatan, kecamatan.name, kecamatanName, { name: kecamatanName, kabupaten_id: kabupatenData.id }))
+                    .then(async (kecamatanData) => await 
+                        findOrCreate<TKelurahan>(kelurahan, kelurahan.name, kelurahanName, { name: kelurahanName, kecamatan_id: kecamatanData.id }))
+                        .then(async (kelurahanData) => 
+                            findOrCreate<TKodepos>(kodepos, kodepos.kodepos, kodeposValue, { kodepos: kodeposValue, kelurahan_id: kelurahanData.id }))
+    }
 
-            if (kelurahan_id === -1) 
-                continue;
-
-            const kodepos_id = await DBController.select()
-                .from(Schema.addresses.kodepos)
-                .where(eq(Schema.addresses.kodepos.kodepos, kodepos))
-                .then(r => r[0].id)
-                .catch(async r => await DBController.insert(Schema.addresses.kodepos)
-                    .values({ kodepos, kelurahan_id })
-                    .$returningId()
-                    .then(r2 => {
-                        return r2[0].id;
-                    })
-                    .catch(r2 => {
-                        throw r2;
-                        failed_kodepos.push(kodepos);
-                        return -1;
-                    })
-            );
-            
-            if (kodepos_id === -1) 
-                continue;
-
-
-            const percent = (current / data_length) * 100;
-
-            Bun.stdout.write(`Progress: ${current}/${data_length} = ${percent.toFixed(2)}%      \r`);
-            
-            current++;
+    console.log("Populating Delivery Plan");
+    const deliveryPlan = await DBController.select().from(Schema.product.deliveryPlan).limit(2);
+    if (deliveryPlan.length <= 0) {
+        const deliveryPlanData = [
+            { name: "Senin, Rabu, Jumat",},
+            { name: "Selasa, Kamis, Sabtu",}
+        ];
+        for (const dp of deliveryPlanData) {
+            await DBController.insert(Schema.product.deliveryPlan).values(dp);
+        }
+    } else if (deliveryPlan.length == 1) {
+        const deliveryPlanData = [
+            { name: "Selasa, Kamis, Sabtu",}
+        ];
+        for (const dp of deliveryPlanData) {
+            const existing = await DBController.select().from(Schema.product.deliveryPlan).where(eq(Schema.product.deliveryPlan.name, dp.name)).limit(1);
+            if (existing.length <= 0) {
+                await DBController.insert(Schema.product.deliveryPlan).values(dp);
+            }
+        }
+    } else if (deliveryPlan.length == 2) {
+        const deliveryPlanData = [
+            { name: "Senin, Rabu, Jumat",},
+            { name: "Selasa, Kamis, Sabtu",}
+        ];
+        for (const dp of deliveryPlanData) {
+            const existing = await DBController.select().from(Schema.product.deliveryPlan).where(eq(Schema.product.deliveryPlan.name, dp.name)).limit(1);
+            if (existing.length <= 0) {
+                await DBController.insert(Schema.product.deliveryPlan).values(dp);
+            }
+        }
+    } else {
+        console.log("Remove all besides 2");
+        for (let i = 2; i < deliveryPlan.length; i++) {
+            await DBController.delete(Schema.product.deliveryPlan).where(eq(Schema.product.deliveryPlan.id, deliveryPlan[i].id));
         }
 
-        Bun.stdout.write("\n");
-    });
+        // make sure its always Senin, Rabu, Jumat and Selasa, Kamis, Sabtu'
+        const x = [
+            { name: "Senin, Rabu, Jumat",},
+            { name: "Selasa, Kamis, Sabtu",}
+        ]
+        for(let i = 0; i < 2; i++) {
+            const dp = deliveryPlan[i];
+            if (dp.name != x[i].name) {
+                await DBController.update(Schema.product.deliveryPlan).set({ name: x[i].name }).where(eq(Schema.product.deliveryPlan.id, dp.id));
+            }
+        }
+
+        //update the id to 1 and to
+        await DBController.update(Schema.product.deliveryPlan).set({ id: 1 }).where(eq(Schema.product.deliveryPlan.name, "Senin, Rabu, Jumat"));
+        await DBController.update(Schema.product.deliveryPlan).set({ id: 2 }).where(eq(Schema.product.deliveryPlan.name, "Selasa, Kamis, Sabtu"));
+    }
+    
+    console.log("Database population complete.");
+}
