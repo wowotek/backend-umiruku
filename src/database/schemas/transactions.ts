@@ -4,24 +4,35 @@ import { customers } from "./customers";
 import { deliveryPlan, product, productPrice } from "./products";
 import { files } from "./files";
 
+export type TInvoiceItems = InferSelectModel<typeof invoiceItems>;
+export const invoiceItems = mysqlTable('invoice_items', {
+    id: int().autoincrement().primaryKey(),
+    invoice_id: int().references(() => invoice.id),
+    product_name: text().notNull(),
+    product_price: int().notNull(),
+    quantity: int().notNull().default(1),
+});
+
 export type TInvoice = InferSelectModel<typeof invoice>;
 export const invoice = mysqlTable('invoice', {
     id: int().autoincrement().primaryKey(),
-    customer_id: int().references(() => customers.id),
-    date: datetime(),
-    
-    product_price_id: int().references(() => productPrice.id),
-    delivery_plan_id: int().references(() => deliveryPlan.id),
+    customer_id: int().notNull().references(() => customers.id),
+    date: datetime().notNull(),
 
-    total: int(), // Rupiah * 1000
-    method: varchar({ length: 255, enum: ['transfer'] }),
-    status: varchar({ length: 255, enum: ['pending', 'success', 'failed', "cancelled"] }),
+    total: int().notNull(), // Rupiah * 1000
+    method: varchar({ length: 255, enum: ['transfer'] }).notNull(),
+    status: varchar({ length: 255, enum: ['pending', 'issued', 'success', 'failed', "cancelled"] }).notNull(),
     bukti_transfer_file_id: int().references(() => files.id),
 });
 
-// TODO: make both relation for invoice -> customer and customer -> invoice
-// TODO: make both relation for invoice -> productPrice and productPrice -> invoice
-// TODO: make both relation for invoice -> deliveryPlan and deliveryPlan -> invoice
+export const invoiceRelations = relations(invoice, ({ one }) => ({
+    customer: one(customers, { fields: [invoice.customer_id], references: [customers.id] }),
+    bukti_transfer_file: one(files, { fields: [invoice.bukti_transfer_file_id], references: [files.id] }),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+    invoice: one(invoice, { fields: [invoiceItems.invoice_id], references: [invoice.id] })
+}));
 
 export type TCustomerSubscription = InferSelectModel<typeof customer_subscription>;
 export const customer_subscription = mysqlTable('customer_subscription', {
