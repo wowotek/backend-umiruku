@@ -3,11 +3,93 @@ import DBController from '../database';
 import Schema from '../database/schemas';
 import { TReturn } from './_types';
 import { TCustomer } from '../database/schemas/customers';
+import { TKabupaten, TKecamatan, TKelurahan, TKodepos, TProvinsi } from '../database/schemas/addresses';
 
+export type TCustomerWithAddress = TCustomer & {
+    provinsi: TProvinsi | null,
+    kabupaten: TKabupaten | null,
+    kecamatan: TKecamatan | null,
+    kelurahan: TKelurahan | null,
+    kodepos: TKodepos | null,
+};
+
+export const joinAddress = async (
+    customer: TCustomer
+): Promise<TCustomerWithAddress> => {
+    const kelurahan = await DBController.select()
+        .from(Schema.addresses.kelurahan)
+        .where(eq(Schema.addresses.kelurahan.id, customer.kelurahan_id))
+        .limit(1)
+        .then(r => r[0])
+        .catch(err => {
+            console.error(err);
+            return null
+        });
+
+    const kecamatan = await DBController.select()
+        .from(Schema.addresses.kecamatan)
+        .where(eq(Schema.addresses.kecamatan.id, customer.kecamatan_id))
+        .limit(1)
+        .then(r => r[0])
+        .catch(err => {
+            console.error(err);
+            return null
+        });
+
+    const kabupaten = await DBController.select()
+        .from(Schema.addresses.kabupaten)
+        .where(eq(Schema.addresses.kabupaten.id, customer.kabupaten_id))
+        .limit(1)
+        .then(r => r[0])
+        .catch(err => {
+            console.error(err);
+            return null
+        });
+
+    const provinsi = await DBController.select()
+        .from(Schema.addresses.provinsi)
+        .where(eq(Schema.addresses.provinsi.id, customer.provinsi_id))
+        .limit(1)
+        .then(r => r[0])
+        .catch(err => {
+            console.error(err);
+            return null
+        });
+
+    const kodepos = await DBController.select()
+        .from(Schema.addresses.kodepos)
+        .where(eq(Schema.addresses.kodepos.id, customer.kodepos_id))
+        .limit(1)
+        .then(r => r[0])
+        .catch(err => {
+            console.error(err);
+            return null
+        });
+
+    // TODO: i don't know which to choose, throw it or just return null, for now returning null is possible
+    if (kelurahan) {}
+    if (kecamatan) {}
+    if (kabupaten) {}
+    if (provinsi) {}
+    if (kodepos) {}
+    
+    return {
+        ...customer,
+        kelurahan,
+        kecamatan,
+        kabupaten,
+        provinsi,
+        kodepos
+    };
+}
+
+export const joinAddresses = async (
+    customers: TCustomer[]
+): Promise<TCustomerWithAddress[]> => await Promise.all(customers.map(async customer => await joinAddress(customer)));
 
 export const getOneById = async (
         customer_id: number
-    ): Promise<TReturn<TCustomer>> => await DBController.select()
+    ): Promise<TReturn<TCustomerWithAddress>> => await DBController.select()
         .from(Schema.customers.customers)
         .where(
             eq(Schema.customers.customers.id, customer_id)
@@ -16,7 +98,7 @@ export const getOneById = async (
         .then(async results => 
             results.length > 0 ? {
                 status: 'ok',
-                result: results[0] /* this is a customer */
+                result: await joinAddress(results[0]) /* this is a customer */
             } : {
                 status: 'error',
                 result: 'customer_not_found'
@@ -32,7 +114,7 @@ export const getOneById = async (
 
 export const getOneByPhone = async (
         phone_number: string
-    ): Promise<TReturn<TCustomer>> => await DBController.select()
+    ): Promise<TReturn<TCustomerWithAddress>> => await DBController.select()
         .from(Schema.customers.customers)
         .where(
             eq(Schema.customers.customers.phone_number, phone_number)
@@ -40,7 +122,7 @@ export const getOneByPhone = async (
         .limit(1)
         .then(async results => results.length > 0 ? {
             status: 'ok',
-            result: results[0] 
+            result: await joinAddress(results[0]) 
         } : {
             status: 'error',
             result: null
@@ -55,7 +137,7 @@ export const getOneByPhone = async (
 
 export const getOneByEmail = async (
         email: string
-    ): Promise<TReturn<TCustomer>> => await DBController.select()
+    ): Promise<TReturn<TCustomerWithAddress>> => await DBController.select()
         .from(Schema.customers.customers)
         .where(
             eq(Schema.customers.customers.email, email)
@@ -63,7 +145,7 @@ export const getOneByEmail = async (
         .limit(1)
         .then(async results => results.length > 0 ? {
             status: 'ok',
-            result: results[0] 
+            result: await joinAddress(results[0]) 
         } : {
             status: 'error',
             result: null
@@ -99,7 +181,7 @@ export const getManyCount = async (
         .limit(count)
         .then(async results => ({
             status: 'ok',
-            result: results
+            result: await joinAddresses(results)
         }));
 
 export const createOne = async (data: {
@@ -156,9 +238,9 @@ export const createOne = async (data: {
                 .then(async insertedId => await DBController.select()
                     .from(Schema.customers.customers)
                     .where(eq(Schema.customers.customers.id, insertedId[0].id))
-                    .then(r => ({
+                    .then(async r => ({
                         status: 'ok',
-                        result: r[0]
+                        result: await joinAddress(r[0])
                     }))
                     .catch(async err => {
                         console.error("GET Customer", err);
@@ -175,7 +257,7 @@ export const createOne = async (data: {
                         result: err
                     }
                 });
-        })
+        });
 
 export default {
     getOneById,
