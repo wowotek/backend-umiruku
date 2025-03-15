@@ -8,10 +8,13 @@ export type TFile = {
     mimetype: string,
     signature: string,
 };
-export const files = mysqlTable('files', {
+
+export const tblDefFiles = {
     id: int().autoincrement().primaryKey(),
     filename_path: text().notNull(),
     mimetype: text().notNull(),
     signature: varchar({ length: 255 }).notNull(),
-});
+};
+
+export const files = mysqlTable('files', tblDefFiles);
 // =====================================================

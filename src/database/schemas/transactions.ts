@@ -12,15 +12,18 @@ export type TCustomerSubscription = InferSelectModel<typeof customerSubscription
 
 
 // === Table Definitions
-export const tblDevInvoiceItems = {
+export const tblDefInvoiceItems = {
     id: int().autoincrement().primaryKey(),
-    invoice_id: int().references(() => invoice.id),
+    invoice_id: int().notNull().references(() => invoice.id),
+    product_id: int().notNull().references(() => product.id, { onDelete: 'no action' }),
     product_name: text().notNull(),
     product_price: int().notNull(),
+    description: text().notNull().default(""),
     quantity: int().notNull().default(1),
 };
 export const tblDefInvoice = {
     id: int().autoincrement().primaryKey(),
+    order_id: varchar({ length: 256 }).notNull().unique(),
     customer_id: int().notNull().references(() => customers.id),
     date: datetime().notNull(),
     
@@ -34,14 +37,13 @@ export const tblDefCustomerSubscription = {
     customer_id: int().references(() => customers.id),
     product_id: int().references(() => product.id),
     delivery_plan_id: int().references(() => deliveryPlan.id),
-    start_date: datetime().notNull(),
+    start_date: datetime().notNull().$defaultFn(() => new Date()),
     end_date: datetime().notNull(),
     status: varchar({ length: 255, enum: ['active', 'fulfilled', 'underperform', 'cancelled'] }).notNull()
 };
 
-
 // === Table Instances
-export const invoiceItems = mysqlTable('invoice_items', tblDevInvoiceItems);
+export const invoiceItems = mysqlTable('invoice_items', tblDefInvoiceItems);
 export const invoice = mysqlTable('invoice', tblDefInvoice);
 export const customerSubscription = mysqlTable('customer_subscription', tblDefCustomerSubscription);
 
