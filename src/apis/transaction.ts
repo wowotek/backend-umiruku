@@ -1,11 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lte } from 'drizzle-orm';
 import DBController from '../database';
 import Schema from '../database/schemas';
 import APICustomer from './customer';
 import { getDeliveryPlanById, getProductById, getProductLatestPrice } from './product';
 import { TDeliveryPlan, TFullProductPrice, TProduct, TProductPrice } from '../database/schemas/products';
 import { TReturn } from './_types';
-import { TInvoice } from '../database/schemas/transactions';
+import { TInvoice, TInvoiceItems } from '../database/schemas/transactions';
 
 
 export const getInvoiceById = async (
@@ -30,6 +30,49 @@ export const getInvoiceById = async (
                 result: err
             }
         }); 
+
+export const getInvoiceCountOnMonthYear = async (
+        month: number,
+        year: number
+): Promise<TReturn<number>> => {
+    const currentMonth = new Date();
+    // strip the day and time to beginning of the month
+    currentMonth.setFullYear(year);
+    currentMonth.setMonth(month);
+    currentMonth.setDate(1);
+    currentMonth.setHours(0);
+    currentMonth.setMinutes(0);
+    currentMonth.setSeconds(0);
+    currentMonth.setMilliseconds(0);
+
+    const maxDayThisMonth = new Date(year, month, 0).getDate();
+    const endOfMonth = new Date();
+    endOfMonth.setFullYear(year);
+    endOfMonth.setMonth(month);
+    endOfMonth.setDate(maxDayThisMonth);
+    endOfMonth.setHours(23);
+    endOfMonth.setMinutes(59);
+
+    return await DBController.select({ count: count() })
+        .from(Schema.transactions.invoice)
+        .where(
+            and(
+                gte(Schema.transactions.invoice.date, currentMonth),
+                lte(Schema.transactions.invoice.date, endOfMonth)
+            )
+        )
+        .then(async results => ({
+            status: 'ok',
+            result: results[0].count
+        }))
+        .catch(async (err: Error) => {
+            console.error("getInvoiceCountOnMonthYear", err);
+            return {
+                status: 'error',
+                result: err
+            }
+        })
+};
 
 export const createNewInvoice = async (
         customer_id: number,
@@ -62,7 +105,7 @@ export const createNewInvoice = async (
                 status: 'error',
                 result: retval_productPrice.result as Error | string
             };
-            const productPrice = (retval_productPrice.result as TFullProductPrice).product_price as TProductPrice;
+            const productPrice = (retval_productPrice.result as TProductPrice).price;
 
             const retval_deliveryPlan = await getDeliveryPlanById(delivery_plan_id);
             if (retval_deliveryPlan.result === null) return {
@@ -76,16 +119,36 @@ export const createNewInvoice = async (
             const deliveryPlan = retval_deliveryPlan.result as TDeliveryPlan;
 
             const invoiceItem = {
+                product_id: product.id,
                 product_name: product.name,
-                product_price: productPrice.price,
-                quantity: 1
+                product_price: productPrice,
+                quantity: 12
             };
+
+            const totalPrice = productPrice * 12;
+            const priceAfterTax = totalPrice + (totalPrice * (12 / 100));
+
+            // create order id
+            const invoiceCountThisMonth_res = await getInvoiceCountOnMonthYear(new Date().getMonth() + 1, new Date().getFullYear());
+            if (invoiceCountThisMonth_res.status !== 'ok') return {
+                status: 'error',
+                result: invoiceCountThisMonth_res.result as Error | string
+            };
+
+            const date = new Date();
+            const invoiceCountThisMonth = invoiceCountThisMonth_res.result as number;
+            const paddedCount = (invoiceCountThisMonth + 1).toString().padStart(6, '0');
+            const paddedMonth = (date.getMonth() + 1).toString().padStart(2, '0');
+            const paddedYear = date.getFullYear().toString();
+            const hash = (new Bun.CryptoHasher('sha256')).update(`${customer_id}-${paddedCount}-${paddedMonth}-${paddedYear}`).digest('hex');
+            const order_id = `INV-${paddedCount}-${paddedMonth}${paddedYear}-${hash.slice(0, 6)}`;
 
             const invoice = await DBController.insert(Schema.transactions.invoice)
                 .values({
                     customer_id,
+                    order_id: order_id,
                     date: new Date(),
-                    total: -1,
+                    total: priceAfterTax,
                     method: 'transfer',
                     status: 'pending',
                 })
@@ -135,6 +198,8 @@ export const createNewInvoice = async (
                         result: err
                     }
                 });
+            
+            console.log("createNewInvoice.addInvoiceItem", dbInvoiceItem);
 
             return {
                 status: 'ok',
@@ -149,8 +214,93 @@ export const createNewInvoice = async (
             }
         });
 
+export const getInvoicesByCount = async (
+    count: number
+): Promise<TReturn<TInvoice[]>> => await DBController.select()
+    .from(Schema.transactions.invoice)
+    .orderBy(desc(Schema.transactions.invoice.date))
+    .limit(count)
+    .then(async results => ({
+        status: 'ok',
+        result: results
+    }))
+    .catch(async (err: Error) => {
+        console.error("getInvoiceByCount", err);
+        return {
+            status: 'error',
+            result: err
+        }
+    }
+);
+
+export const getInvoicesByIdRange = async (
+    idStart: number,
+    idEnd: number
+): Promise<TReturn<TInvoice[]>> => await DBController.select()
+        .from(Schema.transactions.invoice)
+        .where(
+            and(
+                gte(Schema.transactions.invoice.id, idStart),
+                lte(Schema.transactions.invoice.id, idEnd)
+            )
+        )
+        .then(async results => ({
+            status: 'ok',
+            result: results
+        }))
+        .catch(async (err: Error) => {
+            console.error("getInvoicesByIdRange", err);
+            return {
+                status: 'error',
+                result: err
+            }
+        }
+);
+
+export const getInvoiceItemsByInvoiceId = async (
+    invoice_id: number
+): Promise<TReturn<(TInvoiceItems & { product: TProduct | null })[]>> => await DBController.select()
+    .from(Schema.transactions.invoiceItems)
+    .where(
+        eq(Schema.transactions.invoiceItems.invoice_id, invoice_id)
+    )
+    .then(async results => {
+        const r = new Array<TInvoiceItems & { product: TProduct | null }>();
+        for(const invoiceItem of results) {
+            const product = await getProductById(invoiceItem.product_id);
+            if (product.status !== 'ok') {
+                console.error("getInvoiceItemsByInvoiceId.getProductById", product.result);
+                r.push({
+                    ...invoiceItem,
+                    product: null
+                })
+            }
+
+            r.push({
+                ...invoiceItem,
+                product: product.result as TProduct
+            })
+        }
+
+        return {
+            status: 'ok',
+            result: r
+        }
+    })
+    .catch(async (err: Error) => {
+        console.error("getInvoiceItemsByInvoiceId", err);
+        return {
+            status: 'error',
+            result: err
+        }
+    });
+
 export default {
-    createNewInvoice
+    createNewInvoice,
+    getInvoiceById,
+    getInvoicesByCount,
+    getInvoicesByIdRange,
+    getInvoiceItemsByInvoiceId
 };
 
 

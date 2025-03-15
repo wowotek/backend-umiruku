@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import DBController from '../database';
 import Schema from '../database/schemas';
 import { TReturn } from './_types';
@@ -11,6 +11,9 @@ export const getProductManyByCount = async (
     ): Promise<TReturn<TProduct[]>> => await DBController
         .select()
         .from(Schema.product.product)
+        .where(
+            eq(Schema.product.product.is_deleted, false)
+        )
         .limit(count)
         .then(async results => ({
             status: 'ok',
@@ -30,7 +33,10 @@ export const getProductById = async (
         .select()
         .from(Schema.product.product)
         .where(
-            eq(Schema.product.product.id, product_id)
+            and(
+                eq(Schema.product.product.id, product_id),
+                eq(Schema.product.product.is_deleted, false)
+            )
         )
         .then(async results => results.length > 0 ? {
             status: 'ok',
@@ -93,34 +99,38 @@ export const updateProduct = async (
         });
 
 export const deleteProduct = async (
-        ...target_id: number[]
+        target_id: number
     ) => {
         // TODO: Implement this with checking if the product is used in any table
-        // const results: Array<TProduct> = [];
-        // for(const id of target_id) {
-        //     const status_product = await getProductById(id);
-        //     if(status_product.status === 'ok') {
-        //         results.push(status_product.result as TProduct);
-        //         await DBController
-        //             .delete(Schema.product.product)
-        //             .where(
-        //                 eq(Schema.product.product.id, id)
-        //             );
-        //     }
-        // }
-
-        // return {
-        //     status: 'ok',
-        //     result: results
-        // };
+        console.log("DELETING PRODUCT ID:", target_id);
+        const status_product = await getProductById(target_id);
+        if(status_product.status !== 'ok') return {
+            status: 'error',
+            result: status_product.result
+        }
+        
+        return await DBController
+            .update(Schema.product.product)
+            .set({ is_deleted: true })
+            .where(
+                eq(Schema.product.product.id, target_id)
+            )
+            .then(async res => ({
+                status: 'ok',
+                result: res
+            }))
+            .catch(async (err: Error) => {
+                console.error("deleteProduct", err);
+                throw err;
+            }
+        );
     }
 // ======================= Product Price =======================
 export const getProductLatestPrice = async (
         product_id: number
-    ): Promise<TReturn<TFullProductPrice>> => await DBController
+    ): Promise<TReturn<TProductPrice>> => await DBController
         .select()
         .from(Schema.product.productPrice)
-        .fullJoin(Schema.product.product, eq(Schema.product.product.id, Schema.product.productPrice.product_id))
         .where(
             eq(Schema.product.productPrice.product_id, product_id)
         )
@@ -145,7 +155,7 @@ export const getProductLatestPrice = async (
 export const createProductPrice = async (
         product_id: number,
         price: number
-    ): Promise<TReturn<TFullProductPrice>> => await getProductById(product_id)
+    ): Promise<TReturn<TProductPrice>> => await getProductById(product_id)
         .then(async product => await DBController
             .insert(Schema.product.productPrice)
             .values({ product_id, price, date: new Date() })
@@ -220,6 +230,10 @@ export const getDeliveryPlanById = async (
                 result: err
             }
         });
+
+// ======================= Product Transaction =======================
+
+
 
 
 export default {
