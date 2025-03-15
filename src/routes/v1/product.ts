@@ -47,6 +47,50 @@ route_Product.post(
 
 )
 
+route_Product.put(
+    '/',
+    zValidator('json', z.object({
+        product_id: z.number(),
+        name: z.string()
+    })),
+    async (c) => API.Product
+        .updateProduct(
+            c.req.valid('json').product_id,
+            c.req.valid('json').name
+        )
+        .then(async results => c.json({
+            status: 'ok',
+            result: results
+        }))
+        .catch(async err => c.json({
+            status: 'error',
+            result: err
+        }))
+);
+
+route_Product.delete(
+    '/',
+    async (c) => {
+        const id = c.req.query('product_id') ?? "-1";
+        if(id === "-1") return c.json({
+            status: 'error',
+            result: 'product_id must be provided'
+        });
+
+        return await API.Product
+            .deleteProduct(parseInt(id))
+            .then(async results => c.json({
+                status: 'ok',
+                result: results
+            }))
+            .catch(async err => c.json({
+                status: 'error',
+                result: err
+            }));
+    }
+);
+// ======================= Product Price =======================
+
 route_Product.post(
     '/price',
     zValidator('json', z.object({
@@ -66,6 +110,15 @@ route_Product.post(
             status: 'error',
             result: err
         }))
+) 
+
+route_Product.get(
+    "/price",
+    zValidator('query', z.object({
+        product_id: z.string()
+    })),
+    async(c) => API.Product.getProductLatestPrice(parseInt(c.req.valid('query').product_id))
+        .then(async results => c.json(results))
 )
 
 route_Product.get(

@@ -118,22 +118,44 @@ route_Customer.get(
 // GET customer by id range
 route_Customer.get(
     '/id',
-    zValidator('query', z.object(
-        {
-            id_start: z.number().int().min(1),
-            id_end: z.number().int().min(1),
-        }
-    )),
-    async (c) => await API.Customer
-        .getManyByMinMaxId(
-            c.req.valid('query').id_start,
-            c.req.valid('query').id_end
-        ).then(async results => {
-            return c.json({
-                status: 'ok',
-                results: results.result
-            });
-    })
+    async (c) => {
+        const start = parseInt(c.req.query().id_start ?? "-1");
+        const end = parseInt(c.req.query().id_end ?? "-1");
+
+        if(start === -1) return c.json({
+            status: 'error',
+            result: 'id_start must be provided'
+        });
+
+        if(end === -1) return c.json({
+            status: 'error',
+            result: 'id_end must be provided'
+        });
+        
+        return await API.Customer
+            .getManyByMinMaxId(
+                start,
+                end
+            ).then(async results => {
+                return c.json({
+                    status: 'ok',
+                    results: results.result
+                });
+        })
+    }
 );
+
+// GET customer by count
+route_Customer.get(
+    '/count',
+    async (c) => await API.Customer
+        .getManyCount(
+            parseInt(c.req.query().count ?? String(MAX_RESULT_COUNT))
+        )
+        .then(async results => c.json({
+            status: 'ok',
+            results: results.result
+        })
+));
 
 export default route_Customer;
