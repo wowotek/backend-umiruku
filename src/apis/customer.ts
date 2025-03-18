@@ -171,7 +171,7 @@ export const getManyByMinMaxId = async (
         )
         .then(async results => ({
             status: 'ok',
-            result: results
+            result: await joinAddresses(results)
         }));
 
 export const getManyCount = async (
@@ -258,6 +258,13 @@ export const createOne = async (data: {
                     }
                 });
         });
+
+export const getManyInArea = async (
+    offset: number,
+    count: number,
+): Promise<TReturn<TCustomerWithAddress[]>> => await DBController.select()
+export const getManyOutArea;
+export const getManyActive;
 
 export default {
     getOneById,

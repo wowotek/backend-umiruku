@@ -12,3 +12,8 @@
 - [ ] function naming on apis need consistencies
     - [ ] plurals, singular consistencies
     - [ ] choose either use `getOne` or `getCustomer`
+- [ ] add offset beside count for getting many record
+
+
+# Business Logic
+- [ ]

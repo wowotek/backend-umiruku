@@ -8,6 +8,21 @@ import { TReturn } from './_types';
 import { TInvoice, TInvoiceItems } from '../database/schemas/transactions';
 
 
+export const joinInvoice = async (
+    invoice: TInvoice
+): Promise<TInvoice & { items: TInvoiceItems[] }> => {
+    const _items = await getInvoiceItemsByInvoiceId(invoice.id);
+    if (_items.status !== 'ok') return {
+        ...invoice,
+        items: []
+    };
+
+    const items = _items.result as TInvoiceItems[];
+    return {
+        ...invoice,
+        items
+    }
+}
 export const getInvoiceById = async (
         invoice_id: number
     ): Promise<TReturn<TInvoice>> => await DBController.select()
@@ -238,6 +253,7 @@ export const getInvoicesByIdRange = async (
     idEnd: number
 ): Promise<TReturn<TInvoice[]>> => await DBController.select()
         .from(Schema.transactions.invoice)
+        .orderBy(desc(Schema.transactions.invoice.date))
         .where(
             and(
                 gte(Schema.transactions.invoice.id, idStart),
